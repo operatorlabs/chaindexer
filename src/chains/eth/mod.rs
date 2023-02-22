@@ -429,7 +429,6 @@ mod tests {
         });
         let conf: EthDynConf = serde_json::from_value(v).unwrap();
         assert_eq!(conf.rpc.url.unwrap(), "asdf".to_string());
-        // dbg!(conf_default);
         let conf_default: EthDynConf = serde_json::from_value(serde_json::json!({})).unwrap();
         assert_eq!(conf_default.rpc.url.unwrap(), "http://localhost:8545");
     }

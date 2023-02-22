@@ -164,10 +164,7 @@ impl TableApiStream {
                                 Ok(batch) => {
                                     if let Some(tx) = chan {
                                         let lower = chunk.as_set().iter().next().unwrap();
-                                        let rowcount = row_counter.clone();
-                                        let mut rowcount = rowcount.lock();
-                                        *rowcount += batch.num_rows() as u64;
-                                        tx.send((lower, *rowcount)).ok();
+                                        tx.send((batch.num_rows() as u64, lower)).ok();
                                     }
                                     Some((Ok(batch), next_state))
                                 }
@@ -193,6 +190,8 @@ impl TableApiStream {
         });
         self
     }
+    /// Initialize a new stream. Pass in `count_chan` to get updates of (row_count, lower_bound)
+    /// after each yield of the stream.
     pub fn new(
         table: Arc<dyn TableApi>,
         blocknums: &BlockNumSet,
@@ -337,7 +336,6 @@ impl Stream for TableApiStreamLimit {
                     Poll::Ready(Some(Ok(batch)))
                 } else {
                     let to_ignore = new_total - me.limit;
-                    dbg!(to_ignore);
                     let to_slice = batch.num_rows() - to_ignore;
                     Poll::Ready(Some(Ok(batch.slice(0, to_slice))))
                 }
@@ -627,7 +625,6 @@ mod tests {
             expected_iters(0, size, perchunk, pergroup),
             numchunks as u64
         );
-        // dbg!(chunks.l)
         let rdr = ParquetRecordBatchReaderBuilder::try_new(Bytes::from_iter(
             chunks.into_iter().flatten(),
         ))

@@ -331,7 +331,6 @@ impl ChaindexerTableProvider {
                 "error while resolving object store using first partition from index"
             ))?;
         let obj_store = store_api.object_store();
-        dbg!((&object_store_url, &obj_store));
 
         // filter out partitions
         let partitions: Vec<BlockPartition> = index

@@ -217,10 +217,10 @@ mod tests {
                 filename: "testy.db".to_string(),
             },
             StorageConf::Memory {
-                bucket: "testy".to_owned(),
+                bucket: "bucket".to_owned(),
             },
             StorageConf::Memory {
-                bucket: "testy".to_owned(),
+                bucket: "bucket".to_owned(),
             },
         ]
     }
@@ -303,6 +303,7 @@ mod tests {
             ))
             .await
             .unwrap();
+        dbg!(&store);
         match store.conf() {
             StorageConf::File { dirpath, .. } => {
                 assert_eq!(dirpath.to_owned(), dir.path.to_owned());
@@ -312,7 +313,7 @@ mod tests {
         let memstore = ctx
             .chain_store_for_loc(&Location::new(
                 "memory",
-                None,
+                Some("bucket"),
                 ObjStorePath::parse("/var/data/file").unwrap(),
             ))
             .await

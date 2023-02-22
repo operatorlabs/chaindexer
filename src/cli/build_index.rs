@@ -700,7 +700,7 @@ mod tests {
         assert_eq!(mdata.get("test").unwrap(), "flag");
     }
     #[tokio::test]
-    async fn build_new_chain_index_existing_nonempty_map() {
+    async fn build_new_chain_index_existing_nonempty() {
         let dir = TestDir::new(true);
         let index = emptymap(10).await;
         let tablenames = index.table_names().await.unwrap();
@@ -733,7 +733,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn build_new_chain_index_existing_nonempty_map_starts_above_zero() {
+    async fn build_new_chain_index_existing_nonempty_starts_above_zero() {
         let dir = TestDir::new(true);
         let empty_map = emptymap(10).await;
         let tablenames = empty_map.table_names().await.unwrap();

@@ -6,26 +6,30 @@
 
 The open source indexer and query engine for blockchain data.
 
-> Better docs coming soon
-
 # Installation
 
-Cargo is required to build/install. The project is not on crates.io (yet!), so to install
-it, you have to clone this repo, then run
+Cargo is required to build/install ([rustup](https://rustup.rs/) is an easy way to install it).
+Then from the root of this repo, run
 
 ```sh
 cargo install --path .
 ```
 
-If you don't have cargo installed, I recommend checking out `https://rustup.rs/`!
-
 # Quickstart
 
-Run an sql REPL to query an ethereum RPC node directly:
+The query engine supports querying directly from an RPC node (i.e. without pre-indexing
+the entire chain). To spin up a SQL REPL and start querying data from your RPC, you
+can simply run:
 
 ```sh
 ETH_RPC_API=<your rpc url> chaindexer sql
 ```
+
+Note that not all queries will work in this way see--[queries](#queries).
+
+## Available schemas/tables
+
+TODO
 
 ## Queries
 
@@ -72,9 +76,10 @@ You'll probably want a config file to specify your storage layer before building
 chaindexer config
 ```
 
-This will create a TOML file that you can edit. For example, to use S3 as your storage
-layer, you can open up the config file at `~/.chaindexer/config.toml` and change the
-`stores.eth` section (s3 credentials are read from the environment):
+This will create a TOML file that you can edit. For example, to use S3 (other configuration
+examples can be seen in the source code at `src/storage/conf.rs`, datatype is named `StorageConf`)
+as your storage layer, you can open up the config file at `~/.chaindexer/config.toml`
+and change the `stores.eth` section (s3 credentials are read from the environment):
 
 ```toml
 [stores.eth]
