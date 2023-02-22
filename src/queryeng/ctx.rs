@@ -1,15 +1,12 @@
 use crate::chains::ChainApi;
 use crate::partition_index::ChainPartitionIndex;
-use crate::queryeng::provider::ChaindexerTableProvider;
 use crate::storage::Location;
 use crate::storage::{Persistable, StorageApi, StorageConf};
 use crate::table_api::TableApi;
 use anyhow::{bail, Result};
-use datafusion::catalog::catalog::{CatalogList, CatalogProvider};
 use datafusion::prelude::SessionContext;
-use datafusion::sql::TableReference;
-use log::{debug, info, warn};
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use log::{debug, warn};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -19,12 +16,17 @@ use super::schema::{Catalog, GlobalCatalogs};
 pub struct Ctx {
     // custom state
     state: Arc<CtxState>,
-    df_ctx: RwLock<SessionContext>,
+    df_ctx: SessionContext,
     global_catalogs: Arc<GlobalCatalogs>,
 }
 impl std::fmt::Debug for Ctx {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Ctx").field("state", &self.state).finish()
+    }
+}
+impl Default for Ctx {
+    fn default() -> Self {
+        Self::new()
     }
 }
 pub type CtxStateRef = Arc<CtxState>;
@@ -36,7 +38,7 @@ impl Ctx {
         let mut df_ctx = SessionContext::new();
         df_ctx.register_catalog_list(global_catalogs.clone());
         Self {
-            df_ctx: RwLock::new(df_ctx),
+            df_ctx,
             state,
             global_catalogs,
         }
@@ -44,13 +46,13 @@ impl Ctx {
     pub fn catalog(&self) -> Arc<Catalog> {
         self.global_catalogs.catalog()
     }
-    /// Get a read-only lock to the underlying datafusion context
-    pub fn ctx(&self) -> RwLockReadGuard<SessionContext> {
-        self.df_ctx.read()
+    /// Get a ref to the underlying datafusion context
+    pub fn ctx(&self) -> &SessionContext {
+        &self.df_ctx
     }
     /// Get a mutable lock to the underlying datafusion context
-    pub fn ctx_mut(&self) -> RwLockWriteGuard<SessionContext> {
-        self.df_ctx.write()
+    pub fn ctx_mut(&mut self) -> &mut SessionContext {
+        &mut self.df_ctx
     }
 
     // pub fn into_owned_ctx() ->

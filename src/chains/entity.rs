@@ -437,7 +437,7 @@ mod tests {
 
         async fn raw_data_with_blocknums(
             &self,
-            nums: &BlockNumSet,
+            _nums: &BlockNumSet,
         ) -> Result<Vec<Arc<TestRawData>>, Error> {
             unreachable!()
         }
@@ -551,7 +551,7 @@ mod tests {
 
         async fn raw_data_with_blocknums(
             &self,
-            nums: &BlockNumSet,
+            _nums: &BlockNumSet,
         ) -> Result<Vec<Arc<TestRawData>>, Error> {
             unreachable!()
         }
@@ -597,7 +597,7 @@ mod tests {
 
         async fn raw_data_with_blocknums(
             &self,
-            nums: &BlockNumSet,
+            _nums: &BlockNumSet,
         ) -> Result<Vec<Arc<TestRawData>>, Error> {
             unreachable!()
         }

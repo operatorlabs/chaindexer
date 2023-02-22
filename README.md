@@ -27,12 +27,6 @@ can simply run:
 ETH_RPC_API=<your rpc url> chaindexer sql
 ```
 
-Note that not all queries will work in this way see--[queries](#queries).
-
-## Available schemas/tables
-
-TODO
-
 ## Queries
 
 Running queries and building indices both require an RPC api that you can connect to.
@@ -56,10 +50,30 @@ As long as queries have predicates like this that can be pushed down so that onl
 small subset of block numbers are needed to be retrieved, you should be able to query
 data directly via the RPC api (i.e. without a full index).
 
-> NOTE: _Other SQL interfaces_
+You can also have the query engine automatically filter out all but the last `n` most
+recent blocks by specifying. Running:
+
+```sh
+chaindexer sql --last-n-blocks 10
+
+select * from eth.logs l
+join eth.blocks b
+on b.hash = l.block_hash;
+```
+
+is equivalent to the query shown previously. For doing interactive querying without doing
+a pre-index, using the `last-n-blocks` option is highly recommended.
+
+> **NOTE**: Other SQL interfaces
 >
 > A JDBC compatible server is coming soon (this would allow you to use this in something
 > like PyCharm or any other database client that accepts JDBC).
+
+## Available schemas/tables
+
+TODO
+
+> For more info on the CLI commands, run: `chaindexer help`
 
 # Indexing
 
@@ -99,6 +113,8 @@ filename="eth.db"
 Each chain has its own storage configuration, which is why the storage layer for eth is
 specified under `stores.eth`. If you'd rather store data on disk, the storage layer in the
 default generated config file should be fine.
+
+## Building an index
 
 Now with an eth store layer specified, we can run the `index` command to start
 building the ethereum index. Currently running `index` indexes the raw chain data

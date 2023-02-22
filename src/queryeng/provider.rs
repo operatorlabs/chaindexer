@@ -331,6 +331,7 @@ impl ChaindexerTableProvider {
                 "error while resolving object store using first partition from index"
             ))?;
         let obj_store = store_api.object_store();
+        dbg!((&object_store_url, &obj_store));
 
         // filter out partitions
         let partitions: Vec<BlockPartition> = index
@@ -784,7 +785,7 @@ impl ExecutionPlan for SelectiveExec {
     fn execute(
         &self,
         partition: usize,
-        context: Arc<TaskContext>,
+        _context: Arc<TaskContext>,
     ) -> Result<SendableRecordBatchStream> {
         if self.partitions.is_empty() {
             return Ok(Box::pin(EmptyRecordBatchStream::new(self.schema.clone())));
@@ -1063,6 +1064,7 @@ mod tests {
         let eth_chain = Arc::new(EthChain::new(ChainConf {
             partition_index: None,
             data_fetch_conf: Some(EthDynConf { rpc: conf }),
+            ..Default::default()
         }));
         let tables = eth_chain.clone().get_tables();
         let table = tables

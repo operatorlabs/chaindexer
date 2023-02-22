@@ -67,3 +67,12 @@ TEST_IPFS_GATEWAY=http://127.0.0.1:8080
 TEST_S3_LOCALSTACK=http://127.0.0.1:4566
 TEST_S3_BUCKET=testbucket
 ```
+
+# Misc
+
+Some tests will create files/directories in the `testdata` folder. They should usually
+get cleaned up, but occasionally tests forget to. You can clean them out with
+
+```
+rm -rf testdata/_test*
+```

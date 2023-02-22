@@ -19,9 +19,12 @@ use tokio::sync::Semaphore;
 #[derive(Debug)]
 pub struct RpcApi {
     http_client: Client,
+    /// identify the chain that this rpc api is for
+    chain_id: String,
     url: String,
     batch_size: usize,
     sem: Semaphore,
+    // req_cache: DashMap,
 }
 
 /// default values for an ethereum rpc
@@ -82,9 +85,9 @@ pub enum RpcApiError {
 }
 
 impl RpcApi {
-    pub fn new(conf: &RpcApiConfig) -> Self {
+    pub fn new(chain_id: &str, conf: &RpcApiConfig) -> Self {
         let defaults = RpcApiConfig::default();
-        macro_rules! get {
+        macro_rules! get_or_default {
             ($i: ident) => {
                 conf.$i.clone().unwrap_or_else(|| {
                     let v = defaults.$i.unwrap();
@@ -98,14 +101,15 @@ impl RpcApi {
         }
 
         let http_client = Client::builder()
-            .timeout(Duration::from_millis(get!(request_timeout_ms)))
+            .timeout(Duration::from_millis(get_or_default!(request_timeout_ms)))
             .build()
             .unwrap();
         Self {
             http_client,
-            url: get!(url),
-            batch_size: get!(batch_size),
-            sem: Semaphore::new(get!(max_concurrent)),
+            chain_id: chain_id.to_owned(),
+            url: get_or_default!(url),
+            batch_size: get_or_default!(batch_size),
+            sem: Semaphore::new(get_or_default!(max_concurrent)),
         }
     }
 
@@ -292,7 +296,7 @@ impl RpcApi {
 mod tests {
     use super::super::test::{data_for_method, getrpc, mock_serv, start_block};
     use super::*;
-    use crate::test::{integration_test_flag, setup_integration};
+    use crate::test::integration_test_flag;
     use log::info;
 
     #[tokio::test]
@@ -319,7 +323,7 @@ mod tests {
                     assert_eq!(body.len(), batch_size);
                 }
             });
-            let rpc = RpcApi::new(&conf(u, batch_size));
+            let rpc = RpcApi::new("eth", &conf(u, batch_size));
             let d = data_for_method(method);
             let a = rpc
                 .blocks_with_nums(&BlockNumSet::Range(sblock, sblock + d.request.len() as u64))
@@ -340,7 +344,7 @@ mod tests {
             mock_serv(batch_size),
         )
         .await?;
-        let rpc = RpcApi::new(&conf(u, batch_size));
+        let rpc = RpcApi::new("eth", &conf(u, batch_size));
         let hashes: Vec<String> = testdata
             .request
             .iter()
@@ -374,7 +378,7 @@ mod tests {
             mock_serv(batch_size),
         )
         .await?;
-        let rpc = RpcApi::new(&conf(u, batch_size));
+        let rpc = RpcApi::new("eth", &conf(u, batch_size));
         rpc.tx_receipts_for_blocknums(&BlockNumSet::Range(
             1_000_000,
             1_000_000 + testdata.request.len() as u64,
@@ -393,7 +397,7 @@ mod tests {
             mock_serv(batch_size),
         )
         .await?;
-        let rpc = RpcApi::new(&conf(u, batch_size));
+        let rpc = RpcApi::new("eth", &conf(u, batch_size));
         let traces = rpc
             .traces_in_range(1_000_000, 1_000_000 + testdata.request.len())
             .await?;

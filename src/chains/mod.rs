@@ -1,6 +1,7 @@
 mod chain_api;
 mod entity;
 pub mod eth;
+mod polygon;
 
 #[cfg(test)]
 pub mod test;
@@ -15,12 +16,16 @@ use crate::partition_index::ChainPartitionIndex;
 use anyhow::{bail, Result};
 use toml::Value;
 
+use self::polygon::PolygonChain;
+
 /// All supported chains defined here. If you're adding new chains, make sure you
 /// add a new enum variant for it and then implement the match arm in `try_init_empty`.
 #[derive(Debug, Clone, clap::ValueEnum)]
 pub enum Chain {
     /// Ethereum
     Eth,
+    /// Polygon
+    Polygon,
     /// for integration testing the cli
     #[cfg(test)]
     TestChain,
@@ -37,6 +42,7 @@ impl Chain {
     ) -> Result<Box<dyn ChainApi>> {
         let chain = match chain_id {
             EthChain::ID => Chain::Eth,
+            PolygonChain::ID => Chain::Polygon,
             #[cfg(test)]
             TestChain::ID => Chain::TestChain,
             #[cfg(test)]
@@ -68,17 +74,31 @@ impl Chain {
                 Box::new(EthChain::new(ChainConf {
                     partition_index: None,
                     data_fetch_conf: data_fetching,
+                    last_n_blocks: None,
+                }))
+            }
+            Chain::Polygon => {
+                // attempt to convert it into eth dynamic conf
+                let data_fetching: Option<EthDynConf> = data_fetching_conf
+                    .map(|c| c.to_owned().try_into::<EthDynConf>())
+                    .map_or(Ok(None), |v| v.map(Some))?;
+                Box::new(PolygonChain::new(ChainConf {
+                    partition_index: None,
+                    data_fetch_conf: data_fetching,
+                    last_n_blocks: None,
                 }))
             }
             #[cfg(test)]
             Chain::TestChain => Box::new(TestChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: Some(()),
+                last_n_blocks: None,
             })),
             #[cfg(test)]
             Chain::TestErrorChain => Box::new(ErrorChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: Some(()),
+                last_n_blocks: None,
             })),
         })
     }

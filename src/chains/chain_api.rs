@@ -8,6 +8,38 @@ use anyhow::Result;
 use async_trait::async_trait;
 use thiserror::Error;
 
+#[derive(Debug)]
+pub struct ChainConf<T: Send + Sync + std::fmt::Debug> {
+    /// data about all data partitions that can be queried.
+    /// this is required if you want to use the chain to query data.
+    pub partition_index: Option<ChainPartitionIndex>,
+    /// Dynamic, chain/implementation specific configuration for resolving
+    /// chain data...
+    ///
+    /// This could include stuff like RPC url, RPC batchsize etc.
+    /// This config object is dynamic b/c no assumptions are made about **how** the data
+    /// is resolved.
+    ///
+    /// This is optional b/c you don't need a data fetching config if you are
+    /// just running queries.
+    pub data_fetch_conf: Option<T>,
+    /// This config can be set so that selective queries can be made without needing
+    /// to include a block range in every query.
+    pub last_n_blocks: Option<u64>,
+}
+impl<T> Default for ChainConf<T>
+where
+    T: Send + Sync + std::fmt::Debug,
+{
+    fn default() -> Self {
+        Self {
+            partition_index: None,
+            data_fetch_conf: None,
+            last_n_blocks: None,
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ChainApiError {
     #[error("operation not supported: no data fetching config is present")]
@@ -27,23 +59,6 @@ pub trait ChainApi: Send + Sync + std::fmt::Debug {
     async fn max_blocknum(&self) -> Result<u64>;
     fn partition_index(&self) -> Option<ChainPartitionIndex>;
     fn set_partition_index(&mut self, data: ChainPartitionIndex);
-}
-
-#[derive(Debug)]
-pub struct ChainConf<T: Send + Sync + std::fmt::Debug> {
-    /// data about all data partitions that can be queried.
-    /// this is required if you want to use the chain to query data.
-    pub partition_index: Option<ChainPartitionIndex>,
-    /// Dynamic, chain/implementation specific configuration for resolving
-    /// chain data...
-    ///
-    /// This could include stuff like RPC url, RPC batchsize etc.
-    /// This config object is dynamic b/c no assumptions are made about **how** the data
-    /// is resolved.
-    ///
-    /// This is optional b/c you don't need a data fetching config if you are
-    /// just running queries.
-    pub data_fetch_conf: Option<T>,
 }
 
 /// Trait for defining a chain and the queryable entities it has.

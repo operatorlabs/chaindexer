@@ -35,7 +35,7 @@ impl GlobalConf {
         let mut chains: Vec<Arc<dyn ChainApi>> = Vec::with_capacity(self.chains.len());
         // for every chain they have config'd try to initialize it
         for (id, chain_conf) in &self.chains {
-            match Chain::try_from_id_empty(&id, Some(&chain_conf)) {
+            match Chain::try_from_id_empty(id, Some(chain_conf)) {
                 Ok(mut chain) => {
                     assert_eq!(chain.name(), id); // sanity check remove later
 
@@ -70,8 +70,8 @@ impl GlobalConf {
                                 println!(
                                     "{}",
                                     format!(
-                                        "failed to initialize storage config {}",
-                                        conf_name.cyan()
+                                        "failed to initialize storage config {}: {err}",
+                                        conf_name.cyan(),
                                     )
                                     .yellow()
                                 )
@@ -99,6 +99,7 @@ impl GlobalConf {
             chains.push(Arc::new(EthChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: None,
+                last_n_blocks: None,
             })));
         }
         // register chains in context

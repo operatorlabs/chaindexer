@@ -1,21 +1,12 @@
 //! sql repl interface
+use super::conf::GlobalConf;
 
-use std::sync::Arc;
-use std::time::Instant;
-
+use anyhow::Result;
 use colored::Colorize;
+use datafusion_cli::exec::exec_from_repl;
 use datafusion_cli::print_format::PrintFormat;
 use datafusion_cli::print_options::PrintOptions;
-use itertools::Itertools;
-use log::{debug, info};
-
-use super::conf::GlobalConf;
-use crate::chains::{Chain, ChainApi, ChainConf, ChainDef, EthChain};
-use crate::queryeng::ctx::Ctx;
-use crate::storage::StorageApi;
-use crate::ChainPartitionIndex;
-use anyhow::Result;
-use datafusion_cli::exec::exec_from_repl;
+use std::time::Instant;
 
 #[derive(Debug, clap::ValueEnum, Clone)]
 enum OutputFormat {
@@ -40,9 +31,13 @@ pub struct SqlCommand {
         default_value = "table"
     )]
     format: OutputFormat,
-
+    /// Specify this to make the query engine only look at the `last_n` blocks.
+    /// This can be useful for running queries without needing to pre-index and
+    /// without worrying about specifying a block range in your queries everytime.
+    #[arg(long, short = 'n', value_name = "INT")]
+    last_n_blocks: Option<u64>,
     /// Execute SQL, print to stdout, and then exit.
-    #[arg(long, short)]
+    #[arg(long, short, value_name = "SQL")]
     command: Option<String>,
 }
 impl SqlCommand {
@@ -56,30 +51,27 @@ impl SqlCommand {
             },
             quiet: true,
         };
-        let ctx = global_conf.init_ctx().await?;
-        let mut df_ctx = ctx.ctx_mut();
+        let mut ctx = global_conf.init_ctx().await?;
+        let df_ctx = ctx.ctx_mut();
         if let Some(cmd) = &self.command {
             let now = Instant::now();
-            let df = df_ctx.sql(&cmd).await?;
+            let df = df_ctx.sql(cmd).await?;
             let results = df.collect().await?;
             opts.print_batches(&results, now)?;
             return Ok(());
         }
         println!("{}", r#"Starting REPL. Close with `\q`"#.blue().bold());
-        exec_from_repl(&mut df_ctx, &mut opts).await?;
+        exec_from_repl(df_ctx, &mut opts).await?;
         Ok(())
     }
 }
-pub async fn run() {
-    let ctx = Ctx::new();
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    #[tokio::test]
-    async fn t() {
-        run().await;
-    }
-}
+//     #[tokio::test]
+//     async fn t() {
+//         run().await;
+//     }
+// }

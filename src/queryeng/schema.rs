@@ -42,8 +42,8 @@ impl CatalogList for GlobalCatalogs {
 
     fn register_catalog(
         &self,
-        name: String,
-        catalog: Arc<dyn CatalogProvider>,
+        _name: String,
+        _catalog: Arc<dyn CatalogProvider>,
     ) -> Option<Arc<dyn CatalogProvider>> {
         unreachable!()
     }

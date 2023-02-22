@@ -58,6 +58,7 @@ ethereum-types = "0.14.1"
 rusqlite = { version = "0.28.0", features = ["bundled", "backup"] }
 tempfile = "3.3.0"
 datafusion-cli = "18.0.0"
+heed = "0.11.0"
 
 
 [dev-dependencies]

@@ -117,12 +117,15 @@ pub async fn mock_serv(batch_size: usize) -> (String, Receiver<Vec<RpcReq>>) {
 }
 
 pub fn getrpc(batch_size: usize, maxconc: usize) -> RpcApi {
-    RpcApi::new(&RpcApiConfig {
-        url: Some(get_rpc_url()),
-        batch_size: Some(batch_size),
-        max_concurrent: Some(maxconc),
-        ..Default::default()
-    })
+    RpcApi::new(
+        "eth",
+        &RpcApiConfig {
+            url: Some(get_rpc_url()),
+            batch_size: Some(batch_size),
+            max_concurrent: Some(maxconc),
+            ..Default::default()
+        },
+    )
 }
 /// overridable value that defines the block number to start tests on...
 /// default is just an arbitrary but fairly recent block (for eth mainnet)

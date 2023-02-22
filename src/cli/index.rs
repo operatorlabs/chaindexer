@@ -610,6 +610,7 @@ mod tests {
         Arc::new(TestChain::new(ChainConf {
             partition_index: None,
             data_fetch_conf: Some(()),
+            last_n_blocks: None,
         }))
     });
     macro_rules! buildopts {
@@ -757,6 +758,7 @@ mod tests {
             chain: Arc::new(ErrorChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: Some(()),
+                last_n_blocks: None,
             })),
             blocks_per_chunk: 10,
             start_block: None,
@@ -869,6 +871,7 @@ mod tests {
             }
             let c = Arc::new(EthChain::new(ChainConf {
                 partition_index: None,
+                last_n_blocks: None,
                 data_fetch_conf: Some(EthDynConf {
                     rpc: RpcApiConfig {
                         url: Some(get_rpc_url()),

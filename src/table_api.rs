@@ -8,9 +8,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use datafusion::parquet::arrow::ArrowWriter;
 use datafusion::parquet::file::properties::{EnabledStatistics, WriterProperties};
-use datafusion::physical_plan::{
-    EmptyRecordBatchStream, RecordBatchStream, SendableRecordBatchStream,
-};
+use datafusion::physical_plan::RecordBatchStream;
 use datafusion::{
     arrow::{
         datatypes::{Schema, SchemaRef},
@@ -125,7 +123,6 @@ impl TableApiStream {
         blocknums: &BlockNumSet,
         blocks_per_batch: u64,
         count_chan: Option<mpsc::UnboundedSender<(u64, u64)>>,
-        limit: Option<usize>,
     ) -> BatchStreamType {
         let chunks = blocknums.chunks(usize::max(blocknums.len() / blocks_per_batch as usize, 1));
         if chunks.is_empty() {
@@ -136,19 +133,17 @@ impl TableApiStream {
         // let indices = (0..blocknums.len()).collect_vec();
         let end_idx = chunks.len() - 1;
         let cur_idx = 0;
-        let row_counter = Arc::new(parking_lot::Mutex::new(0u64));
         let stream = Box::pin(stream::unfold(
             StreamState::Fetching(cur_idx),
             move |state| {
                 let table = table_.clone();
                 let chan = count_chan.clone();
                 let chunks = chunks.clone();
-                let row_counter = row_counter.clone();
                 async move {
                     match state {
                         StreamState::Fetching(idx) => {
                             let chunk = chunks.get(idx).unwrap().to_owned();
-                            if chunk.as_set().len() == 0 {
+                            if chunk.as_set().is_empty() {
                                 return None;
                             }
 
@@ -200,8 +195,7 @@ impl TableApiStream {
         count_chan: Option<mpsc::UnboundedSender<(u64, u64)>>,
     ) -> Self {
         let schema = Arc::new(table.schema());
-        let stream =
-            Self::init_stream(table.clone(), blocknums, blocks_per_batch, count_chan, None);
+        let stream = Self::init_stream(table.clone(), blocknums, blocks_per_batch, count_chan);
         Self {
             table,
             stream,
@@ -380,6 +374,9 @@ impl<'a> BlockNumSet<'a> {
             BlockNumSet::Numbers(n) => n.len(),
         }
     }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     pub fn owned(&self) -> OwnedBlockNumSet {
         match self {
             BlockNumSet::Range(start, end) => OwnedBlockNumSet::Range(*start, *end),
@@ -489,6 +486,7 @@ mod tests {
         let chain = Arc::new(TestChain::new(ChainConf {
             partition_index: Some(chain_empty_idx(1).await),
             data_fetch_conf: Some(()),
+            ..Default::default()
         }));
         let tables = chain.tables();
         let table = &tables[0];
