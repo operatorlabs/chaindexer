@@ -1,0 +1,10 @@
+/target
+.idea
+.vscode
+.DS_Store
+.env
+_scratch
+# for testing
+testdata/_test*
+.chaindexer
+./testdata

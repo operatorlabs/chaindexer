@@ -1,0 +1,6 @@
+[submodule "subgraphs/uniswap/v3-subgraph"]
+	path = subgraphs/uniswap/v3-subgraph
+	url = https://github.com/Uniswap/v3-subgraph.git
+[submodule "subgraphs/uniswap/v2-subgraph"]
+	path = subgraphs/uniswap/v2-subgraph
+	url = https://github.com/Uniswap/v2-subgraph.git
