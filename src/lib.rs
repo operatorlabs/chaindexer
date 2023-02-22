@@ -1,11 +1,4 @@
-#![warn(
-    clippy::all,
-    // clippy::restriction,
-    // clippy::pedantic,
-    // clippy::nursery,
-    // clippy::cargo
-)]
-#![allow(dead_code)]
+#![allow(dead_code, unused)] // disable these once the OSS migration is done.
 #![allow(clippy::from_str_radix_10)]
 mod cli;
 // expose entrypoint and error for main.rs

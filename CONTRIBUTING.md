@@ -1,4 +1,34 @@
-# Tests
+# Contributing
+
+## Adding new chains
+
+The code in this project is written so that it is (relatively) simple to add new chains as
+data sources. For now, there isn't a great guide on this, but if you know Rust,
+you should be able to follow along with our eth implementation--see `src/chains/eth/mod.rs`--
+additionally if is also a chain that uses an eth compatible RPC,
+you can also re-use our ethereum rpc api impl in that module.
+
+Specifically, a chain must implement trait `ChainDef` and all entities of a chain
+must implement `EntityDef` (see `EthEntity` for example of implementing that trait).
+Once the chain is implemented, you can add it as variant in the `Chain` enum (found in `src/chains/mod.rs`).
+
+## Adding projects
+
+TODO
+
+## Other data sources
+
+We want to add ways other than writing rust for users to be able to add their own data sources.
+This is a work in progress, but an embedded WASM runtime that allows
+flexible data defintiions is in the works.
+
+# Dev environment
+
+This is a pretty basic rust project, everything is very standard in terms of dev environment.
+There are a few extra things that must be present for running _some_ tests. But these
+aren't always necessary, depending on what tests you are trying to run.
+
+## Testing
 
 Some of our unit tests require other services running locally.
 

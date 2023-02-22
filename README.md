@@ -1,6 +1,10 @@
-# chaindexer
+# `chaindexer`
+
+[![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/channels/1048004474393858149/1048004474851041352)
 
 The open source indexer and query engine for blockchain data.
+
+> Better docs coming soon
 
 # Installation
 
@@ -15,14 +19,20 @@ If you don't have cargo installed, I recommend checking out `https://rustup.rs/`
 
 # Quickstart
 
-Running queries and building indices both require an RPC api that you can connect to.
-To specify an Ethereum RPC api, you set `ETH_RPC_API` (there is also a way to specify
-more stuff via a config file, see [Config](#Config)).
+Run an sql REPL to query an ethereum RPC node directly:
 
-It is possible to query chain data without building an index ahead of time. The one stipulation
-is that queries must be highly _selective_. On-chain data is range partitioned by block number,
-so queries must query a specific range of block numbers--otherwise the entire chain state
-would have to be indexed (see next section for how to do that.)
+```sh
+ETH_RPC_API=<your rpc url> chaindexer sql
+```
+
+## Queries
+
+Running queries and building indices both require an RPC api that you can connect to.
+But it is possible to query chain data without building an index ahead of time. This can be
+done as long as the queries ran are highly _selective_ in terms of block numbers accessed.
+In other words: since on-chain data is range partitioned
+by block number, queries must only access a specific range of block numbers--otherwise
+the entire chain state would have to be indexed (see next section for how to do that.)
 
 For example, a valid query would be something like:
 
@@ -33,16 +43,15 @@ on b.hash = l.block_hash
 where b.number >= (ethereum_current_block() - 10) -- 10 most recent blocks
 ```
 
-To run an interactive SQL shell that can query your ethereum rpc node:
+Predicates that can be evaluated on block numbers will always be pushed down to the table scan.
+As long as queries have predicates like this that can be pushed down so that only a
+small subset of block numbers are needed to be retrieved, you should be able to query
+data directly via the RPC api (i.e. without a full index).
 
-```sh
-ETH_RPC_API=<your rpc url> chaindexer sql
-```
-
-## Other SQL interfaces
-
-A JDBC compatible server is coming soon (this would allow you to use this in something
-like PyCharm or any other database client that accepts JDBC).
+> NOTE: _Other SQL interfaces_
+>
+> A JDBC compatible server is coming soon (this would allow you to use this in something
+> like PyCharm or any other database client that accepts JDBC).
 
 # Indexing
 
@@ -112,21 +121,3 @@ data during each table scan. For example, an ethereum index would have a row in 
 mapping from the blocks table, for block range 0 - 1,000,000 to a parquet file on S3
 (or other storage layers, including your disk). That parquet file would have 1,000,000
 rows, representing all the blocks in that range.
-
-# Contributing
-
-## Adding new chains
-
-The code in this project is written so that it is (relatively) simple to add new chains as
-data sources. For now, there isn't a great guide on this, but if you know Rust,
-you should be able to follow along with our eth implementation (see `src/chains/eth/mod.rs`).
-
-## Adding projects
-
-TODO
-
-## Other data sources
-
-We want to add ways other than writing rust for users to be able to add their own data sources.
-This is a work in progress, but an embedded WASM runtime that allows
-flexible data defintiions is in the works.

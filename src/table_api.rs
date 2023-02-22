@@ -39,15 +39,24 @@ pub enum TableApiError {
     #[error("error during data fetching")]
     DataFetching(#[from] anyhow::Error),
 }
-impl Into<DataFusionError> for TableApiError {
-    fn into(self) -> DataFusionError {
-        match self {
+impl From<TableApiError> for DataFusionError {
+    fn from(value: TableApiError) -> Self {
+        match value {
             TableApiError::DataFusion(e) => e,
             TableApiError::DataFetching(e) => {
                 DataFusionError::External(e.context("from TableApiError::DataFetching").into())
             }
         }
     }
+
+    // fn into(self) -> DataFusionError {
+    //     match self {
+    //         TableApiError::DataFusion(e) => e,
+    //         TableApiError::DataFetching(e) => {
+    //             DataFusionError::External(e.context("from TableApiError::DataFetching").into())
+    //         }
+    //     }
+    // }
 }
 pub(crate) type TableRef = Arc<dyn TableApi>;
 /// Trait defines the interface.
@@ -333,7 +342,7 @@ impl Stream for TableApiStreamLimit {
                     Poll::Ready(Some(Ok(batch.slice(0, to_slice))))
                 }
             }
-            p @ _ => p,
+            p => p,
         }
     }
 }
@@ -438,7 +447,7 @@ impl OwnedBlockNumSet {
     pub fn as_set(&self) -> BlockNumSet {
         match self {
             OwnedBlockNumSet::Range(start, end) => BlockNumSet::Range(*start, *end),
-            OwnedBlockNumSet::Numbers(nums) => BlockNumSet::Numbers(&nums),
+            OwnedBlockNumSet::Numbers(nums) => BlockNumSet::Numbers(nums),
         }
     }
 }
