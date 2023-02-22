@@ -2,7 +2,7 @@ mod conf;
 mod index;
 mod sql;
 
-use self::index::BuildChainErr;
+use self::{index::BuildChainErr, sql::SqlCommand};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use conf::{default_example_conf, GlobalConf, DEFAULT_CONF_FILE, DEFAULT_DATADIR};
@@ -53,6 +53,7 @@ pub struct Cli {
 pub enum Commands {
     Index(BuildIndexCommand),
     Config(ConfigCommand),
+    Sql(SqlCommand),
 }
 
 impl Commands {
@@ -81,6 +82,17 @@ impl Commands {
                         err: err.into(),
                     }),
                 }
+            }
+            Self::Sql(cmd) => {
+                let conf = load_conf(config_file, datadir)?;
+                cmd.run(&conf)
+                    .await
+                    .map_err(|err| CliError::CommandFailed {
+                        command: "sql".to_string(),
+                        message: err.to_string(),
+                        err,
+                    })?;
+                Ok(())
             }
         }
     }

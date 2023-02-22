@@ -1,7 +1,15 @@
-use crate::storage::StorageConf;
 pub use crate::storage::DEFAULT_DATADIR;
+use crate::{
+    chains::{Chain, ChainApi, ChainConf, ChainDef, EthChain},
+    queryeng::ctx::Ctx,
+    storage::{StorageApi, StorageConf},
+    ChainPartitionIndex,
+};
+use colored::Colorize;
+use itertools::Itertools;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use toml::Value;
 
 /// config is always in data dir for simplicity
@@ -20,6 +28,85 @@ pub struct GlobalConf {
     /// stores config can be typed
     #[serde(default)]
     pub stores: HashMap<String, StorageConf>,
+}
+impl GlobalConf {
+    pub async fn init_ctx(&self) -> anyhow::Result<Ctx> {
+        let ctx = Ctx::new();
+        let mut chains: Vec<Arc<dyn ChainApi>> = Vec::with_capacity(self.chains.len());
+        // for every chain they have config'd try to initialize it
+        for (id, chain_conf) in &self.chains {
+            match Chain::try_from_id_empty(&id, Some(&chain_conf)) {
+                Ok(mut chain) => {
+                    assert_eq!(chain.name(), id); // sanity check remove later
+
+                    // look for conf file
+                    let mut explicit_conf = None as Option<&str>;
+                    if let Some(use_conf) = chain_conf.get("use_conf") {
+                        if let Some(s) = use_conf.as_str() {
+                            debug!("using config named: {s} for chain {id}");
+                            explicit_conf = Some(s);
+                        }
+                    }
+
+                    let (store_conf, conf_name) = match explicit_conf {
+                        Some(n) => (self.stores.get(n), n),
+                        None => (self.stores.get(chain.name()), chain.name()),
+                    };
+                    if let Some(store_conf) = store_conf {
+                        info!("found storage conf {store_conf:?}");
+                        // if store conf found. try initializing and then loading partition index
+                        match StorageApi::<ChainPartitionIndex>::try_new(store_conf.to_owned())
+                            .await
+                        {
+                            Ok(store) => {
+                                ctx.add_storage_conf(conf_name, store_conf).await.ok();
+                                let maybe_idx = store.load().await?;
+                                if let Some(idx) = maybe_idx {
+                                    info!("loaded partition index from conf {conf_name}");
+                                    chain.set_partition_index(idx);
+                                };
+                            }
+                            Err(err) => {
+                                println!(
+                                    "{}",
+                                    format!(
+                                        "failed to initialize storage config {}",
+                                        conf_name.cyan()
+                                    )
+                                    .yellow()
+                                )
+                            }
+                        }
+                    } else {
+                        info!("no storage conf found for {id}");
+                    }
+                    chains.push(Arc::from(chain));
+                }
+                Err(_) => {
+                    println!(
+                        "{}",
+                        format!("Failed to initialize chain: {}", id.cyan()).yellow()
+                    );
+                }
+            }
+        }
+        // we register eth by default so users can run a context without needing
+        // to write a config file
+        let names = chains.iter().map(|c| c.name()).collect_vec();
+        info!("loaded chains {names:?}");
+        if !names.contains(&"eth") {
+            debug!("no eth chain in users conf file. registering an empty one");
+            chains.push(Arc::new(EthChain::new(ChainConf {
+                partition_index: None,
+                data_fetch_conf: None,
+            })));
+        }
+        // register chains in context
+        for c in chains {
+            ctx.register_chain(c);
+        }
+        Ok(ctx)
+    }
 }
 
 pub const DEFAULT_INDEX_NAME: &str = "eth_mapping.db";
@@ -79,6 +166,12 @@ pub fn default_example_conf() -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        chains::test::{ErrorChain, TestChain},
+        storage::Location,
+        test::TestDir,
+    };
+
     use super::*;
 
     #[test]
@@ -105,5 +198,49 @@ mod tests {
         let parsed: GlobalConf =
             toml::from_str(&rawtoml).expect("example default is invalid conf!!");
         assert_eq!(parsed.app_data_dir, DEFAULT_DATADIR.to_path_buf());
+    }
+
+    #[tokio::test]
+    async fn test_init_ctx() {
+        let datadir = TestDir::new(true);
+
+        let conf = GlobalConf {
+            app_data_dir: datadir.path.to_owned(),
+            chains: toml::from_str(&format!(
+                "\n[{}] \
+                \n# empty conf \
+                \n[{}] \
+                \n# empty
+                ",
+                TestChain::ID,
+                ErrorChain::ID
+            ))
+            .unwrap(),
+            stores: toml::from_str(&format!(
+                "\n[{}] \
+                \ntype = \"memory\"\
+                \nbucket = \"test\"\
+                \n[{}] \
+                \ntype = \"memory\" \
+                \nbucket = \"test2\" \
+                ",
+                TestChain::ID,
+                ErrorChain::ID
+            ))
+            .unwrap(),
+        };
+        let ctx = conf.init_ctx().await.unwrap();
+        ctx.catalog().get_chain(TestChain::ID).unwrap();
+        ctx.catalog().get_chain(ErrorChain::ID).unwrap();
+
+        ctx.chain_store_for_loc(&Location::new("memory", Some("test"), "/"))
+            .await
+            .unwrap();
+        ctx.chain_store_for_loc(&Location::new("memory", Some("test2"), "/"))
+            .await
+            .unwrap();
+        ctx.chain_store_for_loc(&Location::new("memory", Some("badbucket"), "/"))
+            .await
+            .unwrap_err();
     }
 }

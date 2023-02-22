@@ -69,9 +69,6 @@ impl ChainDef for EthChain {
             rpc,
         }
     }
-    fn chain_name(&self) -> &str {
-        "ethereum"
-    }
     fn set_chain_partition_index(&self, datamap: ChainPartitionIndex) {
         let mut p = self.partitions.write();
         *p = Some(datamap);

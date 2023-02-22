@@ -12,13 +12,12 @@ pub use entity::{ColumnDef, ColumnTypeDef, EntityDef};
 pub use eth::{EthChain, EthDynConf};
 
 use crate::partition_index::ChainPartitionIndex;
-use anyhow::Result;
-use strum_macros::EnumIter;
+use anyhow::{bail, Result};
 use toml::Value;
 
 /// All supported chains defined here. If you're adding new chains, make sure you
 /// add a new enum variant for it and then implement the match arm in `try_init_empty`.
-#[derive(Debug, Clone, clap::ValueEnum, EnumIter)]
+#[derive(Debug, Clone, clap::ValueEnum)]
 pub enum Chain {
     /// Ethereum
     Eth,
@@ -31,6 +30,33 @@ pub enum Chain {
 }
 
 impl Chain {
+    /// Create a new chain with no backing partition index given the chain id and a conf
+    pub fn try_from_id_empty(
+        chain_id: &str,
+        data_fetching_conf: Option<&Value>,
+    ) -> Result<Box<dyn ChainApi>> {
+        let chain = match chain_id {
+            EthChain::ID => Chain::Eth,
+            #[cfg(test)]
+            TestChain::ID => Chain::TestChain,
+            #[cfg(test)]
+            ErrorChain::ID => Chain::TestErrorChain,
+            _ => bail!("invalid id: {chain_id}"),
+        };
+        chain.try_init_empty(data_fetching_conf)
+    }
+
+    /// Create a new chain with a partition index. given the chain id and a conf
+    pub fn try_from_id(
+        chain_id: &str,
+        data_fetching_conf: Option<&Value>,
+        idx: ChainPartitionIndex,
+    ) -> Result<Box<dyn ChainApi>> {
+        let mut chain = Self::try_from_id_empty(chain_id, data_fetching_conf)?;
+        chain.set_partition_index(idx);
+        Ok(chain)
+    }
+
     /// Given [`Chain`] and a config object, initialize a chain with no [`ChainPartitionIndex`].
     pub fn try_init_empty(&self, data_fetching_conf: Option<&Value>) -> Result<Box<dyn ChainApi>> {
         Ok(match self {
@@ -60,10 +86,10 @@ impl Chain {
     pub fn try_init(
         &self,
         conf: Option<&Value>,
-        data_map: ChainPartitionIndex,
+        idx: ChainPartitionIndex,
     ) -> Result<Box<dyn ChainApi>> {
         let mut chain = self.try_init_empty(conf)?;
-        chain.set_partition_index(data_map);
+        chain.set_partition_index(idx);
         Ok(chain)
     }
 }

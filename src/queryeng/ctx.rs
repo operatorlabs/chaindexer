@@ -9,18 +9,17 @@ use datafusion::catalog::catalog::{CatalogList, CatalogProvider};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use log::{debug, info, warn};
-use parking_lot::RwLock;
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::schema::{Catalog, GlobalCatalogs};
 
-#[derive(Clone)]
 pub struct Ctx {
     // custom state
     state: Arc<CtxState>,
-    df_ctx: Arc<SessionContext>,
+    df_ctx: RwLock<SessionContext>,
     global_catalogs: Arc<GlobalCatalogs>,
 }
 impl std::fmt::Debug for Ctx {
@@ -37,7 +36,7 @@ impl Ctx {
         let mut df_ctx = SessionContext::new();
         df_ctx.register_catalog_list(global_catalogs.clone());
         Self {
-            df_ctx: Arc::new(df_ctx),
+            df_ctx: RwLock::new(df_ctx),
             state,
             global_catalogs,
         }
@@ -45,10 +44,16 @@ impl Ctx {
     pub fn catalog(&self) -> Arc<Catalog> {
         self.global_catalogs.catalog()
     }
-    /// Get the underlying datafusion context
-    pub fn ctx(&self) -> Arc<SessionContext> {
-        Arc::clone(&self.df_ctx)
+    /// Get a read-only lock to the underlying datafusion context
+    pub fn ctx(&self) -> RwLockReadGuard<SessionContext> {
+        self.df_ctx.read()
     }
+    /// Get a mutable lock to the underlying datafusion context
+    pub fn ctx_mut(&self) -> RwLockWriteGuard<SessionContext> {
+        self.df_ctx.write()
+    }
+
+    // pub fn into_owned_ctx() ->
 
     /// Get custom (i.e. non DataFusion) state
     pub fn state(&self) -> Arc<CtxState> {
@@ -64,7 +69,8 @@ impl Ctx {
     /// this will fail if the storage config is invalid.
     pub async fn add_storage_conf(&self, name: &str, conf: &StorageConf) -> Result<()> {
         self.state().add_store(name, conf);
-        self.df_ctx.runtime_env().register_object_store(
+        let ctx = self.ctx();
+        ctx.runtime_env().register_object_store(
             conf.scheme(),
             conf.bucket().unwrap_or(""),
             self.state.chain_idx_stores.get_store_api(conf).await?,
@@ -261,7 +267,7 @@ mod tests {
             ObjStorePath::from_absolute_path(dir.path.join("testy.db")).unwrap(),
         );
         let _objstore = ctx
-            .df_ctx
+            .ctx()
             .runtime_env()
             .object_store_registry
             .get_by_url(loc);

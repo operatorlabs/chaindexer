@@ -30,7 +30,6 @@ rand = "0.8.5"
 async-stream = "0.3.3"
 parking_lot = "0.12"
 dashmap = "5.4.0"
-strum = "0.24.1"
 url = "2.3.1"
 itertools = "0.10.5"
 
@@ -58,7 +57,7 @@ ethereum-types = "0.14.1"
 # storage
 rusqlite = { version = "0.28.0", features = ["bundled", "backup"] }
 tempfile = "3.3.0"
-strum_macros = "0.24.3"
+datafusion-cli = "18.0.0"
 
 
 [dev-dependencies]

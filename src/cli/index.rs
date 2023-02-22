@@ -40,14 +40,7 @@ use thiserror::Error;
     See this command's help for more info."
 )]
 pub struct BuildIndexCommand {
-    /// This should point to a chain config under the `chains` namespace in your config file.
-    /// For example, if you have a table `chains.foo`
-    /// in your TOML config, then you would set this value to `foo`.
-    ///
-    /// If not set will default to the value specified by `--chain`.
-    #[arg(long, short = None, value_name="STRING",  env = "CHAINDEXER_CHAIN_CONF")]
-    pub chain_conf: Option<String>,
-    /// Id of chain to build data map for.
+    /// Id of chain to build index for. Also identifies which chain config to grab.
     #[arg(
         value_enum,
         long,
@@ -98,30 +91,23 @@ impl BuildIndexCommand {
                 message: "".to_string(),
             })?;
         let chain_id = chain_id.get_name();
-        let chain_conf_name = self.chain_conf.unwrap_or_else(|| chain_id.to_owned());
-        debug!(
-            "cli command build-chain-data using chain_id={chain_id}, \
-             chain_conf_name={chain_conf_name} "
-        );
-        let chain_conf =
-            conf.chains
-                .get(&chain_conf_name)
-                .ok_or_else(|| BuildChainErr::ArgError {
-                    arg: "chain-conf".to_owned(),
-                    message: format!(
-                        "No chain config named {} found in config!",
-                        chain_conf_name.cyan().bold()
-                    ),
-                })?;
+        debug!("cli command build-chain-data using chain_id={chain_id}.");
+        let chain_conf = conf
+            .chains
+            .get(chain_id)
+            .ok_or_else(|| BuildChainErr::ArgError {
+                arg: "chain-conf".to_owned(),
+                message: format!("No config found for chain {}!", chain_id.cyan().bold()),
+            })?;
         // try initialize chain using conf
         let chain =
             self.chain
                 .try_init_empty(Some(chain_conf))
                 .map_err(|err| BuildChainErr::ArgError {
-                    arg: "chain-conf".to_owned(),
+                    arg: "chain".to_owned(),
                     message: format!(
-                        "Config named {} is invalid: {}",
-                        chain_conf_name.cyan().bold(),
+                        "Config for chain {} is invalid: {}",
+                        chain_id.cyan().bold(),
                         err.to_string().bold()
                     ),
                 })?;

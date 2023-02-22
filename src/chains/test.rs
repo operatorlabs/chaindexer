@@ -162,9 +162,6 @@ impl ChainDef for TestChain {
             data: Mutex::new(conf.partition_index),
         }
     }
-    fn chain_name(&self) -> &str {
-        "chain_testy"
-    }
     fn get_chain_partition_index(&self) -> Option<ChainPartitionIndex> {
         self.data.lock().as_ref().cloned()
     }
@@ -238,16 +235,13 @@ impl ErrorChain {
 #[async_trait]
 impl ChainDef for ErrorChain {
     type DynConf = ();
-    const ID: &'static str = "chain_testy";
+    const ID: &'static str = "error_chain_testy";
     const BLOCKS_PER_PARTITION: u64 = 1000;
 
     fn new(conf: ChainConf<Self::DynConf>) -> Self {
         Self {
             data: Mutex::new(conf.partition_index),
         }
-    }
-    fn chain_name(&self) -> &str {
-        "chain_testy"
     }
     fn get_chain_partition_index(&self) -> Option<ChainPartitionIndex> {
         self.data.lock().as_ref().cloned()

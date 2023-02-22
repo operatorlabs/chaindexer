@@ -1,5 +1,5 @@
 //! Self-contained utils that are useful in various plaes.
-use std::{io, sync::Arc};
+use std::{io, path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use bytes::Bytes;
@@ -19,6 +19,7 @@ pub struct RpcApiConfig {
     pub max_concurrent: Option<usize>,
     /// how long to wait before giving up and returning a timeout error.
     pub request_timeout_ms: Option<u64>,
+    pub cache_dir: Option<PathBuf>,
 }
 
 impl Default for RpcApiConfig {
@@ -30,6 +31,7 @@ impl Default for RpcApiConfig {
             batch_size: Some(100),
             max_concurrent: Some(10),
             request_timeout_ms: Some(10_000),
+            cache_dir: None,
         }
     }
 }

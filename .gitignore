@@ -8,3 +8,4 @@ _scratch
 testdata/_test*
 .chaindexer
 ./testdata
+.history
