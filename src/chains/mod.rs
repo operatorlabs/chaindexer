@@ -13,11 +13,12 @@ pub use eth::{EthChain, EthDynConf};
 
 use crate::partition_index::ChainPartitionIndex;
 use anyhow::Result;
+use strum_macros::EnumIter;
 use toml::Value;
 
 /// All supported chains defined here. If you're adding new chains, make sure you
 /// add a new enum variant for it and then implement the match arm in `try_init_empty`.
-#[derive(Debug, Clone, clap::ValueEnum)]
+#[derive(Debug, Clone, clap::ValueEnum, EnumIter)]
 pub enum Chain {
     /// Ethereum
     Eth,

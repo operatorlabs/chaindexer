@@ -874,6 +874,7 @@ dependencies = [
  "serde_json",
  "static_assertions",
  "strum",
+ "strum_macros",
  "tempfile",
  "test-case",
  "thiserror",

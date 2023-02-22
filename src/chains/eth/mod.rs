@@ -49,7 +49,7 @@ pub struct EthChain {
 #[async_trait]
 impl ChainDef for EthChain {
     type DynConf = EthDynConf;
-    const ID: &'static str = "ethereum";
+    const ID: &'static str = "eth";
     const BLOCKS_PER_PARTITION: u64 = 100_000;
     fn new(mut conf: ChainConf<EthDynConf>) -> Self {
         if let Some(dataconf) = conf.data_fetch_conf.as_mut() {

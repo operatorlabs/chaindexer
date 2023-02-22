@@ -43,10 +43,10 @@ the entire chain state would have to be indexed (see next section for how to do 
 For example, a valid query would be something like:
 
 ```sql
-select * from ethereum.logs l
-join ethereum.blocks b
+select * from eth.logs l
+join eth.blocks b
 on b.hash = l.block_hash
-where b.number >= (ethereum_current_block() - 10) -- 10 most recent blocks
+where b.number >= (eth_current_block() - 10) -- 10 most recent blocks
 ```
 
 Predicates that can be evaluated on block numbers will always be pushed down to the table scan.
