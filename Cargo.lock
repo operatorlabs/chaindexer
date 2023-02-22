@@ -873,6 +873,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "static_assertions",
+ "strum",
  "tempfile",
  "test-case",
  "thiserror",

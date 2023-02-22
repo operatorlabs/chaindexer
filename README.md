@@ -2,7 +2,7 @@
 
 [![build status](https://github.com/operator-io/chaindexer/actions/workflows/build.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/build.yml)
 [![tests status](https://github.com/operator-io/chaindexer/actions/workflows/test.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/test.yml)
-[![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/channels/1048004474393858149/1048004474851041352)
+[![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/invite/KkbgTVWsBS)
 
 The open source indexer and query engine for blockchain data.
 

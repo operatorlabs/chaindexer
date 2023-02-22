@@ -1,12 +1,12 @@
-mod build_index;
 mod conf;
+mod index;
 mod sql;
 
-use self::build_index::BuildChainErr;
-use build_index::BuildIndexCommand;
+use self::index::BuildChainErr;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use conf::{default_example_conf, GlobalConf, DEFAULT_CONF_FILE, DEFAULT_DATADIR};
+use index::BuildIndexCommand;
 use log::{debug, error, info};
 use std::{env::ArgsOs, path::PathBuf};
 use thiserror::Error;
