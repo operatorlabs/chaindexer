@@ -8,10 +8,10 @@ env:
   RUSTFLAGS: -D warnings
   CARGO_TERM_COLOR: always
 
-name: ci
+name: build
 jobs:
   lint:
-    name: code lint
+    name: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -35,6 +35,8 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: cargo run unit tests
-        run: | 
-          cargo t --lib
+      - name: cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features
