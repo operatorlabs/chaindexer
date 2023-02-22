@@ -1,8 +1,10 @@
-# `chaindexer`
+# chaindexer
 
 [![build status](https://github.com/operator-io/chaindexer/actions/workflows/build.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/build.yml)
 [![tests status](https://github.com/operator-io/chaindexer/actions/workflows/test.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/test.yml)
 [![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/invite/KkbgTVWsBS)
+
+<img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" />
 
 The open source indexer and query engine for blockchain data.
 
