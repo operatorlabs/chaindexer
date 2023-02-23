@@ -3,15 +3,16 @@ use crate::partition_index::ChainPartitionIndex;
 use crate::storage::Location;
 use crate::storage::{Persistable, StorageApi, StorageConf};
 use crate::table_api::TableApi;
+
 use anyhow::{bail, Result};
-use datafusion::prelude::SessionContext;
+use datafusion::prelude::{SessionConfig, SessionContext};
 use log::{debug, warn};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use super::schema::{Catalog, GlobalCatalogs};
+use super::schema::{Catalog, GlobalCatalogs, DEFAULT_CATALOG};
 
 pub struct Ctx {
     // custom state
@@ -35,7 +36,11 @@ impl Ctx {
         let state: CtxState = Default::default();
         let state = Arc::new(state);
         let global_catalogs = Arc::new(GlobalCatalogs::new(state.clone()));
-        let mut df_ctx = SessionContext::new();
+        // TODO: expose other datafusion opts here
+        let conf = SessionConfig::default()
+            .with_information_schema(true)
+            .with_default_catalog_and_schema(DEFAULT_CATALOG, "eth");
+        let mut df_ctx = SessionContext::with_config(conf);
         df_ctx.register_catalog_list(global_catalogs.clone());
         Self {
             df_ctx,
@@ -104,6 +109,9 @@ pub struct CtxState {
     start_block: Option<u64>,
     /// if this is set, data after this block (exclusive) will implicitly be filtered out
     end_block: Option<u64>,
+    /// if this is set, treat `end_block` as the current blocknumber (according to the RPC api),
+    /// and `start_block` as `end_block - last_n`
+    last_n: Option<u64>,
     /// all storage confs
     store_confs: RwLock<HashMap<String, StorageConf>>,
     /// instantiated stores for chain indices
@@ -116,6 +124,7 @@ impl Default for CtxState {
             blocks_per_batch: 100,
             start_block: None,
             end_block: None,
+            last_n: None,
             store_confs: RwLock::new(HashMap::new()),
             chain_idx_stores: StorgeApiMap::new(),
         }

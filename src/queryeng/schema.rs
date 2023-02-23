@@ -34,7 +34,7 @@ impl GlobalCatalogs {
         self.catalog.clone()
     }
 }
-pub const DEFAULT_CATALOG: &str = "default";
+pub const DEFAULT_CATALOG: &str = "main";
 impl CatalogList for GlobalCatalogs {
     fn as_any(&self) -> &dyn std::any::Any {
         self

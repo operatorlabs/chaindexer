@@ -23,9 +23,6 @@ pub struct ChainConf<T: Send + Sync + std::fmt::Debug> {
     /// This is optional b/c you don't need a data fetching config if you are
     /// just running queries.
     pub data_fetch_conf: Option<T>,
-    /// This config can be set so that selective queries can be made without needing
-    /// to include a block range in every query.
-    pub last_n_blocks: Option<u64>,
 }
 impl<T> Default for ChainConf<T>
 where
@@ -35,7 +32,6 @@ where
         Self {
             partition_index: None,
             data_fetch_conf: None,
-            last_n_blocks: None,
         }
     }
 }

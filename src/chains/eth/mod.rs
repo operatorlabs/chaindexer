@@ -173,7 +173,7 @@ mod tests {
     use itertools::Itertools;
     use paste::paste;
     use raw_data::TxnReceipt;
-    use test::{data_for_table, mock_serv, EthTable};
+    use test::{data_for_table, EthTable};
 
     async fn testchain(u: String, batch_size: usize) -> Arc<EthChain> {
         let dynconf = EthDynConf {
@@ -189,7 +189,6 @@ mod tests {
         Arc::new(EthChain::new(ChainConf {
             partition_index: Some(parts),
             data_fetch_conf: Some(dynconf),
-            last_n_blocks: None,
         }))
     }
 
@@ -205,40 +204,6 @@ mod tests {
         assert_eq!(conf.rpc.url.unwrap(), "asdf".to_string());
         let conf_default: EthDynConf = serde_json::from_value(serde_json::json!({})).unwrap();
         assert_eq!(conf_default.rpc.url.unwrap(), "http://localhost:8545");
-    }
-
-    #[tokio::test]
-    async fn test_blocks_get_raw() {
-        let batch_size = 10;
-        let (u, _recv) = tokio::time::timeout(
-            tokio::time::Duration::from_millis(20),
-            mock_serv(batch_size),
-        )
-        .await
-        .unwrap();
-        let mockdata_count = data_for_table(EthTable::Blocks).request.len() as u64;
-        let table = BlocksTable::new(testchain(u, batch_size).await);
-        table
-            .raw_data_with_blocknums(&BlockNumSet::Range(1_000_000, 1_000_000 + mockdata_count))
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_logs_get_raw() {
-        let batch_size = 10;
-        let (u, _recv) = tokio::time::timeout(
-            tokio::time::Duration::from_millis(20),
-            mock_serv(batch_size),
-        )
-        .await
-        .unwrap();
-        let mockdata_count = data_for_table(EthTable::Logs).request.len() as u64;
-        let table = LogsTable::new(testchain(u, batch_size).await);
-        table
-            .raw_data_with_blocknums(&BlockNumSet::Range(1_000_000, 1_000_000 + mockdata_count))
-            .await
-            .unwrap();
     }
 
     #[tokio::test]
@@ -309,7 +274,6 @@ mod tests {
                     ..Default::default()
                 },
             }),
-            last_n_blocks: None,
         }))
     }
     async fn test_table(table: Box<dyn TableApi>, rowcount: u64) {

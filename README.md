@@ -71,7 +71,18 @@ a pre-index, using the `last-n-blocks` option is highly recommended.
 
 ## Available schemas/tables
 
-TODO
+Schemas, tables and each table's columns can be shown via SQL:
+
+```
+SHOW TABLES; -- shows available tables, what tables are available will depend on your config
+DESCRIBE eth.blocks; -- describe a single table
+```
+
+Show specific schemas:
+
+```
+DESC
+```
 
 > For more info on the CLI commands, run: `chaindexer help`
 

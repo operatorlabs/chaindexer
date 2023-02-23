@@ -99,7 +99,6 @@ impl GlobalConf {
             chains.push(Arc::new(EthChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: None,
-                last_n_blocks: None,
             })));
         }
         // register chains in context

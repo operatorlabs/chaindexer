@@ -74,7 +74,6 @@ impl Chain {
                 Box::new(EthChain::new(ChainConf {
                     partition_index: None,
                     data_fetch_conf: data_fetching,
-                    last_n_blocks: None,
                 }))
             }
             Chain::Polygon => {
@@ -85,20 +84,17 @@ impl Chain {
                 Box::new(PolygonChain::new(ChainConf {
                     partition_index: None,
                     data_fetch_conf: data_fetching,
-                    last_n_blocks: None,
                 }))
             }
             #[cfg(test)]
             Chain::TestChain => Box::new(TestChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: Some(()),
-                last_n_blocks: None,
             })),
             #[cfg(test)]
             Chain::TestErrorChain => Box::new(ErrorChain::new(ChainConf {
                 partition_index: None,
                 data_fetch_conf: Some(()),
-                last_n_blocks: None,
             })),
         })
     }
