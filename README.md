@@ -4,7 +4,7 @@
 [![tests status](https://github.com/operator-io/chaindexer/actions/workflows/test.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/test.yml)
 [![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/invite/KkbgTVWsBS)
 
-<a href="https://operator.io"c> <img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" width="15%" /> </a>
+<a href="https://operator.io"> <img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" width="15%" /> </a>
 
 The open source indexer and query engine for blockchain data.
 
@@ -55,7 +55,9 @@ recent blocks by specifying. Running:
 
 ```sh
 chaindexer sql --last-n-blocks 10
+```
 
+```sql
 select * from eth.logs l
 join eth.blocks b
 on b.hash = l.block_hash;
@@ -76,12 +78,6 @@ Schemas, tables and each table's columns can be shown via SQL:
 ```
 SHOW TABLES; -- shows available tables, what tables are available will depend on your config
 DESCRIBE eth.blocks; -- describe a single table
-```
-
-Show specific schemas:
-
-```
-DESC
 ```
 
 > For more info on the CLI commands, run: `chaindexer help`
