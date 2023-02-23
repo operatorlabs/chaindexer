@@ -8,11 +8,6 @@ repository = "https://github.com/operator-io/chaindexer"
 readme = "README.md"
 homepage = "https://github.com/operator-io/chaindexer"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[features]
-default = ["eth"]
-eth = []
-
 [dependencies]
 # core deps
 datafusion = { version = "18.0.0", features = ["scheduler"] }
@@ -20,7 +15,6 @@ tokio = { version = "1.24.2", features = [
   "full", # todo: change features from "full"
 ] }
 tokio-util = { version = "0.7.4", features = ["io"] }
-
 # utils
 futures = "0.3.25"
 reqwest = { version = "0.11.13", features = ["json", "multipart", "stream"] }
@@ -37,7 +31,7 @@ parking_lot = "0.12"
 dashmap = "5.4.0"
 url = "2.3.1"
 itertools = "0.10.5"
-
+datafusion-cli = "18.0.0"
 # serde crates
 serde = "1"
 serde_derive = "1.0.148"
@@ -62,7 +56,6 @@ ethereum-types = "0.14.1"
 # storage
 rusqlite = { version = "0.28.0", features = ["bundled", "backup"] }
 tempfile = "3.3.0"
-datafusion-cli = "18.0.0"
 heed = "0.11.0"
 
 

@@ -75,7 +75,7 @@ a pre-index, using the `last-n-blocks` option is highly recommended.
 
 Schemas, tables and each table's columns can be shown via SQL:
 
-```
+```sql
 SHOW TABLES; -- shows available tables, what tables are available will depend on your config
 DESCRIBE eth.blocks; -- describe a single table
 ```

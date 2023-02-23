@@ -9,3 +9,4 @@ testdata/_test*
 .chaindexer
 ./testdata
 .history
+Cargo.lock
