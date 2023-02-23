@@ -1,12 +1,10 @@
-# chaindexer
+<a href="https://operator.io"> <img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" width="15%" /> </a>
+
+###### The open source indexer and query engine for blockchain data.
 
 [![build status](https://github.com/operator-io/chaindexer/actions/workflows/build.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/build.yml)
 [![tests status](https://github.com/operator-io/chaindexer/actions/workflows/test.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/test.yml)
 [![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/invite/KkbgTVWsBS)
-
-<a href="https://operator.io"> <img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" width="15%" /> </a>
-
-The open source indexer and query engine for blockchain data.
 
 # Installation
 
@@ -42,7 +40,7 @@ For example, a valid query would be something like:
 select * from eth.logs l
 join eth.blocks b
 on b.hash = l.block_hash
-where b.number >= (eth_current_block() - 10) -- 10 most recent blocks
+where b.number >= (current_block('eth') - 10) -- 10 most recent blocks for ethereum
 ```
 
 Predicates that can be evaluated on block numbers will always be pushed down to the table scan.

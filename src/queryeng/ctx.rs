@@ -5,8 +5,15 @@ use crate::storage::{Persistable, StorageApi, StorageConf};
 use crate::table_api::TableApi;
 
 use anyhow::{bail, Result};
-use datafusion::prelude::{SessionConfig, SessionContext};
+use colored::Colorize;
+use datafusion::arrow::array::{as_string_array, ArrayRef, UInt64Array};
+use datafusion::arrow::datatypes::DataType;
+use datafusion::logical_expr::Volatility;
+use datafusion::physical_plan::functions::make_scalar_function;
+use datafusion::prelude::{create_udf, SessionConfig, SessionContext};
+use itertools::Itertools;
 use log::{debug, warn};
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -31,6 +38,11 @@ impl Default for Ctx {
     }
 }
 pub type CtxStateRef = Arc<CtxState>;
+// b/c of the way datafusion udfs work (requires 'static refs so that it can be `Fn`),
+// we can only save the current block number for the duration
+// of the program lifetime once its loaded.
+// TODO: im sure there's a better way to do this
+// static CURRENT_BLOCKS: OnceCell<HashMap<String, u64>> = OnceCell::new();
 impl Ctx {
     pub fn new() -> Self {
         let state: CtxState = Default::default();
@@ -59,8 +71,58 @@ impl Ctx {
     pub fn ctx_mut(&mut self) -> &mut SessionContext {
         &mut self.df_ctx
     }
+    /// initializes udfs for this context.
+    pub async fn init_udfs(&self) {
+        // use static mapping so that the udfs impl trait `Fn`
+        static CUR_BLOCKS: OnceCell<RwLock<HashMap<String, u64>>> = OnceCell::new();
+        let mut current_blocks = HashMap::new();
+        for c in self.state.chains() {
+            let current_block = c.max_blocknum().await;
+            if let Ok(b) = current_block {
+                current_blocks.insert(c.name().to_owned(), b);
+            } else {
+                println!(
+                    "{}",
+                    format!("failed to fetch current block for {}", c.name().cyan()).yellow()
+                );
+            }
+        }
+        if let Some(rwlock) = CUR_BLOCKS.get() {
+            let mut wr = rwlock.write();
+            for (k, v) in current_blocks.iter() {
+                wr.insert(k.to_owned(), *v);
+            }
+        } else {
+            CUR_BLOCKS.get_or_init(|| RwLock::new(current_blocks));
+        }
+        let current_block_impl = |args: &[ArrayRef]| {
+            // this is guaranteed by DataFusion based on the function's signature.
+            assert_eq!(args.len(), 1);
+            let names = as_string_array(&args[0]);
+            let blocks = CUR_BLOCKS.get().unwrap();
+            let blocks = blocks.read();
+            // 2. perform the computation
+            let array = names
+                .iter()
+                .map(|v| match v {
+                    Some(n) => blocks.get(n).copied(),
+                    None => None,
+                })
+                .collect::<UInt64Array>();
+            Ok(Arc::new(array) as ArrayRef)
+        };
 
-    // pub fn into_owned_ctx() ->
+        let cur_block_udf = create_udf(
+            "current_block",
+            // expects two f64
+            vec![DataType::Utf8],
+            // returns f64
+            Arc::new(DataType::UInt64),
+            Volatility::Immutable,
+            make_scalar_function(current_block_impl),
+        );
+        self.df_ctx.register_udf(cur_block_udf);
+    }
 
     /// Get custom (i.e. non DataFusion) state
     pub fn state(&self) -> Arc<CtxState> {
@@ -86,7 +148,8 @@ impl Ctx {
     }
 
     pub fn register_chain(&self, chain: Arc<dyn ChainApi>) {
-        self.catalog().register_chain(chain);
+        self.catalog().register_chain(chain.clone());
+        self.state.add_chain(chain);
     }
 
     /// Given a `loc`, get a [`StorageApi`] that supports it, if one exists.
@@ -116,6 +179,7 @@ pub struct CtxState {
     store_confs: RwLock<HashMap<String, StorageConf>>,
     /// instantiated stores for chain indices
     chain_idx_stores: StorgeApiMap<ChainPartitionIndex>,
+    regd_chains: RwLock<Vec<Arc<dyn ChainApi>>>,
 }
 
 impl Default for CtxState {
@@ -127,6 +191,7 @@ impl Default for CtxState {
             last_n: None,
             store_confs: RwLock::new(HashMap::new()),
             chain_idx_stores: StorgeApiMap::new(),
+            regd_chains: RwLock::new(vec![]),
         }
     }
 }
@@ -176,6 +241,14 @@ impl CtxState {
     pub fn end_block(&self) -> Option<u64> {
         self.end_block
     }
+    fn add_chain(&self, c: Arc<dyn ChainApi>) {
+        let mut wr = self.regd_chains.write();
+        wr.push(c);
+    }
+    fn chains(&self) -> Vec<Arc<dyn ChainApi>> {
+        let rdr = self.regd_chains.read();
+        rdr.iter().cloned().collect_vec()
+    }
 }
 
 /// Simple data stucture wrapping a mutex hashmap for storing
@@ -221,7 +294,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::storage::ObjStorePath;
+    use crate::{
+        chains::{
+            test::{empty_chain, ErrorChain},
+            ChainDef,
+        },
+        storage::ObjStorePath,
+    };
+    use datafusion::common::cast::as_uint64_array;
     use itertools::Itertools;
     use std::path::PathBuf;
 
@@ -264,6 +344,35 @@ mod tests {
         let stores = state.store_confs.read();
         assert_eq!(stores.len(), 4);
         assert_eq!(stores.get("n1").unwrap().scheme(), "file");
+    }
+    #[tokio::test]
+    async fn test_init_udfs() {
+        let ctx = Ctx::new();
+        let chain = empty_chain();
+        let name = chain.name();
+        ctx.register_chain(chain.clone());
+        ctx.init_udfs().await;
+        async fn get_block_for(chain: &str, ctx: &Ctx) -> Option<u64> {
+            let q = format!("select current_block('{chain}')");
+            let df = ctx.df_ctx.sql(&q).await.unwrap();
+            let b = df.collect().await.unwrap();
+            let batch = &b[0];
+            let col = as_uint64_array(batch.column(0)).unwrap();
+            col.iter().next().unwrap()
+        }
+        let res = get_block_for(name, &ctx).await;
+        assert!(res.is_some());
+        let res2 = get_block_for(ErrorChain::ID, &ctx).await;
+        assert!(res2.is_none());
+        // reg new chain but dont initialize udfs
+        let errchain = Arc::new(ErrorChain::init().await) as Arc<dyn ChainApi>;
+        ctx.register_chain(Arc::clone(&errchain));
+        let res3 = get_block_for(ErrorChain::ID, &ctx).await;
+        assert!(res3.is_none());
+        // init udfs now and grab block num
+        ctx.init_udfs().await;
+        let res4 = get_block_for(ErrorChain::ID, &ctx).await;
+        assert!(res4.is_some());
     }
 
     #[tokio::test]
