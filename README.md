@@ -4,7 +4,7 @@
 [![tests status](https://github.com/operator-io/chaindexer/actions/workflows/test.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/test.yml)
 [![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/invite/KkbgTVWsBS)
 
-<a href="https://operator.io"> <img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" width="15%" /> </a>
+<a href="https://operator.io"c> <img src="https://atana-public-assets.s3.amazonaws.com/Operator-Black.svg" width="15%" /> </a>
 
 The open source indexer and query engine for blockchain data.
 
