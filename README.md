@@ -2,8 +2,7 @@
 
 ###### The open source indexer and query engine for blockchain data.
 
-[![build status](https://github.com/operator-io/chaindexer/actions/workflows/build.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/build.yml)
-[![tests status](https://github.com/operator-io/chaindexer/actions/workflows/test.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/test.yml)
+[![ci status](https://github.com/operator-io/chaindexer/actions/workflows/ci.yml/badge.svg)](https://github.com/operator-io/chaindexer/actions/workflows/ci.yml)
 [![chat](https://img.shields.io/badge/chat-discord-blue)](https://discord.com/invite/KkbgTVWsBS)
 
 # Installation

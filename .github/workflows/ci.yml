@@ -8,9 +8,9 @@ env:
   RUSTFLAGS: -D warnings
   CARGO_TERM_COLOR: always
 
-name: build
+name: ci
 jobs:
-  lint:
+  build:
     name: build
     runs-on: ubuntu-latest
     steps:
@@ -40,3 +40,25 @@ jobs:
         with:
           command: build
           args: --release --all-features
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'  
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt, clippy
+      # cache cargo deps 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: cargo unit test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --lib
+  
