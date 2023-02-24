@@ -43,7 +43,7 @@ pub async fn build_test_chain_with_index(opts: TestChainOpts) -> Result<ChainTes
     let empty_chain = Arc::new(TestChain::new(ChainConf {
         partition_index: None,
         data_fetch_conf: Some(()),
-        ..Default::default()
+        // ..Default::default()
     }));
     let tables = empty_chain.clone().get_tables();
     let TestChainOpts {
@@ -101,7 +101,7 @@ pub async fn build_test_chain_with_index(opts: TestChainOpts) -> Result<ChainTes
         chain: Arc::new(TestChain::new(ChainConf {
             partition_index: Some(index),
             data_fetch_conf: Some(()),
-            ..Default::default()
+            // ..Default::default()
         })),
     })
 }

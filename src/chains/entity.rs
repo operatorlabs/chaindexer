@@ -490,10 +490,7 @@ mod tests {
         let table = test_table().await;
         let res = table.raw_to_arrow(raw);
         match res {
-            Err(DataFusionError::ArrowError(e)) => match e {
-                ArrowError::InvalidArgumentError(_) => {}
-                _ => panic!(),
-            },
+            Err(DataFusionError::ArrowError(ArrowError::InvalidArgumentError(_))) => {}
             Err(_) => panic!(),
             _ => panic!(),
         }
@@ -507,10 +504,7 @@ mod tests {
         let table = test_table().await;
         let res = table.raw_to_arrow(raw);
         match res {
-            Err(DataFusionError::ArrowError(e)) => match e {
-                ArrowError::InvalidArgumentError(_) => {}
-                _ => panic!(),
-            },
+            Err(DataFusionError::ArrowError(ArrowError::InvalidArgumentError(_))) => {}
             Err(_) => panic!(),
             _ => panic!(),
         }

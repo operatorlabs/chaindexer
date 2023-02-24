@@ -52,6 +52,9 @@ impl SqlCommand {
             quiet: true,
         };
         let mut ctx = global_conf.init_ctx().await?;
+        if let Some(n) = self.last_n_blocks {
+            ctx.state().set_last_n(n);
+        }
         let df_ctx = ctx.ctx_mut();
         if let Some(cmd) = &self.command {
             let now = Instant::now();
@@ -65,13 +68,3 @@ impl SqlCommand {
         Ok(())
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[tokio::test]
-//     async fn t() {
-//         run().await;
-//     }
-// }

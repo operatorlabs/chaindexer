@@ -509,7 +509,7 @@ mod tests {
         let chain = Arc::new(TestChain::new(ChainConf {
             partition_index: Some(chain_empty_idx(1).await),
             data_fetch_conf: Some(()),
-            ..Default::default()
+            // ..Default::default()
         }));
         let tables = chain.tables();
         let table = &tables[0];

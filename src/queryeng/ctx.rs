@@ -22,9 +22,11 @@ use tokio::sync::Mutex;
 use super::schema::{Catalog, GlobalCatalogs, DEFAULT_CATALOG};
 
 pub struct Ctx {
-    // custom state
+    // custom app-specific state (separate from datafusion's state)
     state: Arc<CtxState>,
+    // datafusion query context
     df_ctx: SessionContext,
+    // catalog "singleton"
     global_catalogs: Arc<GlobalCatalogs>,
 }
 impl std::fmt::Debug for Ctx {
@@ -169,12 +171,12 @@ pub struct CtxState {
     /// target number of blocks of data in arrow record batches.
     blocks_per_batch: u64,
     /// if this is set, data before this block (inclusive) will implicitly be filtered out
-    start_block: Option<u64>,
+    start_block: RwLock<Option<u64>>,
     /// if this is set, data after this block (exclusive) will implicitly be filtered out
-    end_block: Option<u64>,
+    end_block: RwLock<Option<u64>>,
     /// if this is set, treat `end_block` as the current blocknumber (according to the RPC api),
     /// and `start_block` as `end_block - last_n`
-    last_n: Option<u64>,
+    last_n: RwLock<Option<u64>>,
     /// all storage confs
     store_confs: RwLock<HashMap<String, StorageConf>>,
     /// instantiated stores for chain indices
@@ -186,9 +188,9 @@ impl Default for CtxState {
     fn default() -> Self {
         Self {
             blocks_per_batch: 100,
-            start_block: None,
-            end_block: None,
-            last_n: None,
+            start_block: RwLock::new(None),
+            end_block: RwLock::new(None),
+            last_n: RwLock::new(None),
             store_confs: RwLock::new(HashMap::new()),
             chain_idx_stores: StorgeApiMap::new(),
             regd_chains: RwLock::new(vec![]),
@@ -236,10 +238,25 @@ impl CtxState {
         self.blocks_per_batch
     }
     pub fn start_block(&self) -> Option<u64> {
-        self.start_block
+        *self.start_block.read()
     }
     pub fn end_block(&self) -> Option<u64> {
-        self.end_block
+        *self.end_block.read()
+    }
+    pub fn last_n(&self) -> Option<u64> {
+        *self.last_n.read()
+    }
+    pub fn set_start_block(&self, v: u64) {
+        let mut wr = self.start_block.write();
+        *wr = Some(v);
+    }
+    pub fn set_end_block(&self, v: u64) {
+        let mut wr = self.end_block.write();
+        *wr = Some(v);
+    }
+    pub fn set_last_n(&self, v: u64) {
+        let mut wr = self.last_n.write();
+        *wr = Some(v);
     }
     fn add_chain(&self, c: Arc<dyn ChainApi>) {
         let mut wr = self.regd_chains.write();

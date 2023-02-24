@@ -6,6 +6,7 @@ pub mod rpc_api;
 #[cfg(test)]
 pub mod test;
 
+use super::ChainApiError;
 use crate::chains::{ChainApi, ChainConf, ChainDef, ColumnDef, EntityDef};
 use crate::partition_index::ChainPartitionIndex;
 use crate::table_api::BlockNumSet;
@@ -21,8 +22,7 @@ use serde_derive::Deserialize;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use super::ChainApiError;
-
+const DEFAULT_BLOCKS_PER_PARTITION: u64 = 10_000;
 #[derive(Debug, Deserialize, Clone)]
 pub struct EthDynConf {
     #[serde(default = "rpc_defaults")]
@@ -47,7 +47,7 @@ pub struct EthChain {
 impl ChainDef for EthChain {
     type DynConf = EthDynConf;
     const ID: &'static str = "eth";
-    const BLOCKS_PER_PARTITION: u64 = 100_000;
+    const BLOCKS_PER_PARTITION: u64 = DEFAULT_BLOCKS_PER_PARTITION;
     fn new(mut conf: ChainConf<EthDynConf>) -> Self {
         if let Some(dataconf) = conf.data_fetch_conf.as_mut() {
             if dataconf.rpc.url.is_none() {

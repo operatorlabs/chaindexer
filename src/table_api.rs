@@ -9,6 +9,7 @@ use bytes::Bytes;
 use datafusion::parquet::arrow::ArrowWriter;
 use datafusion::parquet::file::properties::{EnabledStatistics, WriterProperties};
 use datafusion::physical_plan::RecordBatchStream;
+use datafusion::sql::TableReference;
 use datafusion::{
     arrow::{
         datatypes::{Schema, SchemaRef},
@@ -62,8 +63,25 @@ pub(crate) type TableRef = Arc<dyn TableApi>;
 pub trait TableApi: Send + Sync + std::fmt::Debug + 'static {
     /// name of the table
     fn name(&self) -> &str;
+    /// sql namespace this table is under
+    fn namespace(&self) -> Option<&str> {
+        None
+    }
     /// get the schema of the arrow record batches returned
     fn schema(&self) -> Schema;
+    /// table identifier for datafusion
+    fn table_reference(&self) -> TableReference {
+        if let Some(ns) = self.namespace() {
+            TableReference::Partial {
+                schema: ns.into(),
+                table: self.name().into(),
+            }
+        } else {
+            TableReference::Bare {
+                table: self.name().into(),
+            }
+        }
+    }
     /// get record batch for blocks in the range start-end.
     async fn batch_for_blocknums(
         &self,
@@ -394,12 +412,12 @@ impl<'a> BlockNumSet<'a> {
         }
         match self {
             BlockNumSet::Range(start, end) => {
-                let chunksize = (end - start) / n as u64;
+                let chunksize = u64::max((end - start) / n as u64, 1);
                 if chunksize == 0 {
                     return vec![];
                 }
                 (*start..*end)
-                    .step_by((end - start) as usize / n)
+                    .step_by(chunksize as usize)
                     .map(|start_chunk| {
                         let end_chunk = u64::min(start_chunk + chunksize, *end);
                         Self::Range(start_chunk, end_chunk)
@@ -407,13 +425,16 @@ impl<'a> BlockNumSet<'a> {
                     .collect()
             }
             BlockNumSet::Numbers(nums) => {
-                let chunksize = nums.len() / n;
+                let chunksize = usize::max(nums.len() / n, 1);
                 if chunksize == 0 {
                     return vec![];
                 }
                 let mut iters = Vec::with_capacity(n);
                 for i in 0..n {
                     let start = chunksize * i;
+                    if start >= nums.len() {
+                        break;
+                    }
                     let end = usize::min(start + chunksize, nums.len());
                     iters.push(BlockNumSet::Numbers(&nums[start..end]));
                 }
@@ -486,11 +507,31 @@ mod tests {
         let chain = Arc::new(TestChain::new(ChainConf {
             partition_index: Some(chain_empty_idx(1).await),
             data_fetch_conf: Some(()),
-            ..Default::default()
         }));
         let tables = chain.tables();
         let table = &tables[0];
         Arc::clone(table)
+    }
+
+    #[test]
+    fn test_blocknum_set_to_chunks_smaller_than_target() {
+        let elems = vec![1, 2, 3, 4, 5];
+        let set = BlockNumSet::Numbers(&elems);
+        let chunks = set.chunks(8);
+        assert_eq!(chunks.len(), 5);
+        let first_elem_per_chunk = chunks
+            .iter()
+            .map(|c| c.iter().next().unwrap())
+            .collect_vec();
+        assert_eq!(first_elem_per_chunk, elems);
+        let set2 = BlockNumSet::Range(1, 6);
+        let chunks2 = set2.chunks(8);
+        assert_eq!(chunks2.len(), 5);
+        let first_elem_per_chunk2 = chunks
+            .iter()
+            .map(|c| c.iter().next().unwrap())
+            .collect_vec();
+        assert_eq!(first_elem_per_chunk2, elems);
     }
 
     #[tokio::test]

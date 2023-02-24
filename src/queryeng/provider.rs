@@ -30,8 +30,9 @@ use datafusion::{
     physical_plan::{
         empty::EmptyExec,
         file_format::{FileScanConfig, ParquetExec},
-        project_schema, EmptyRecordBatchStream, ExecutionPlan, Partitioning,
-        SendableRecordBatchStream, Statistics,
+        project_schema,
+        sorts::sort_preserving_merge::SortPreservingMergeExec,
+        EmptyRecordBatchStream, ExecutionPlan, Partitioning, SendableRecordBatchStream, Statistics,
     },
     prelude::{lit, Column, Expr, SessionContext},
     scheduler::Scheduler,
@@ -170,7 +171,7 @@ impl ChaindexerTableProvider {
         filters: &[Expr],
         limit: Option<usize>,
         _df_state: &SessionState,
-    ) -> Result<Arc<SelectiveExec>> {
+    ) -> Result<Arc<dyn ExecutionPlan>> {
         // make configurable
         let target_partitions = self.opts.threadpool_size;
         let prunable_exprs = filters
@@ -182,21 +183,29 @@ impl ChaindexerTableProvider {
                 "no pruning can be done in selective mode. falling back to state to \
                  hard coded block range"
             );
-            let start = self.state.start_block().ok_or_else(|| {
-                DataFusionError::Execution(
-                    "No start_block in state. Selective query mode requires \
-                     a bounded block range!"
-                        .to_string(),
-                )
-            })?;
-            let end = self.state.end_block().ok_or_else(|| {
-                DataFusionError::Execution(
-                    "No end_block in state. Selective query mode requires \
-                     a bounded block range!"
-                        .to_string(),
-                )
-            })?;
-            (start, end)
+            if let Some(last_n) = self.state.last_n() {
+                let max_block = self.table.max_blocknum().await?.ok_or_else(|| {
+                    DataFusionError::Execution("No max blocknumber could be found!".to_string())
+                })?;
+                debug!("using last_n value of {last_n} and max_block {max_block}...");
+                (max_block - last_n, max_block + 1) // bounds are exclusive upper
+            } else {
+                let start = self.state.start_block().ok_or_else(|| {
+                    DataFusionError::Execution(
+                        "No start_block in state. Selective query mode requires \
+                         a bounded block range!"
+                            .to_string(),
+                    )
+                })?;
+                let end = self.state.end_block().ok_or_else(|| {
+                    DataFusionError::Execution(
+                        "No end_block in state. Selective query mode requires \
+                         a bounded block range!"
+                            .to_string(),
+                    )
+                })?;
+                (start, end)
+            }
         } else {
             let max_block = if let Some(block) = self.state.end_block() {
                 block
@@ -213,7 +222,7 @@ impl ChaindexerTableProvider {
             (start_block, max_block)
         };
         let range = end_block - start_block;
-        let partsize = range as usize / target_partitions;
+        let partsize = usize::max(range as usize / target_partitions, 1);
         let colname = self.table.blocknum_col();
         // get individual blocks
         let df_futs = (start_block..end_block)
@@ -280,12 +289,17 @@ impl ChaindexerTableProvider {
             .into_iter()
             .map(|v| v.owned())
             .collect();
-        Ok(Arc::new(SelectiveExec::new(
+        let selective_exec_plan = Arc::new(SelectiveExec::new(
             self.table.clone(),
             self.state.clone(),
             chunks,
             limit,
-        )))
+        ));
+        let exec_plan = SortPreservingMergeExec::new(
+            selective_exec_plan.sort_expr.to_owned(),
+            selective_exec_plan,
+        );
+        Ok(Arc::new(exec_plan))
     }
 
     /// perform the scan operation agaisnt a partition index
@@ -815,7 +829,7 @@ impl ExecutionPlan for SelectiveExec {
 mod tests {
     use super::*;
     use crate::chains::eth::test::get_rpc_url;
-    use crate::chains::{ChainConf, EthChain, EthDynConf};
+    use crate::chains::{ChainApi, ChainConf, ChainDef, EthChain, EthDynConf};
     use crate::queryeng::test::{build_test_chain_with_index, TestChainOpts};
     use crate::test::integration_test_flag;
     use crate::util::RpcApiConfig;
@@ -826,6 +840,8 @@ mod tests {
         },
         queryeng::ctx::Ctx,
     };
+    use datafusion::arrow::util::pretty::pretty_format_batches;
+    use datafusion::common::cast::as_uint64_array;
     use datafusion::logical_expr::{col, lit, BuiltinScalarFunction};
     use std::ops::Div;
 
@@ -980,7 +996,7 @@ mod tests {
     #[tokio::test]
     async fn test_table_qscan_partition_index() {
         let index = build_test_chain_with_index(TestChainOpts {
-            end_block: 100_00,
+            end_block: 10_000,
             // store: TestStore::File,
             blocks_per_partition: 100,
             ..Default::default()
@@ -1049,32 +1065,41 @@ mod tests {
             }
         };
     }
+
+    macro_rules! setup_eth_integration {
+        () => {{
+            let target_parts = std::thread::available_parallelism().unwrap().get();
+            maybe_check_rpc_exists_env!();
+            let conf = RpcApiConfig {
+                url: Some(get_rpc_url()),
+                batch_size: Some(100),
+                max_concurrent: Some(10),
+                ..Default::default()
+            };
+            // create eth chain with no partition index
+            let eth_chain = Arc::new(EthChain::new(ChainConf {
+                partition_index: None,
+                data_fetch_conf: Some(EthDynConf { rpc: conf }),
+                // ..Default::default()
+            }));
+            let ctx = Ctx::new();
+            ctx.register_chain(eth_chain.clone());
+            let tables = eth_chain.clone().get_tables();
+            let table = tables
+                .iter()
+                .find(|t| t.name() == "blocks")
+                .unwrap()
+                .clone();
+            let current_block = eth_chain.max_blocknum().await?;
+            (ctx, table, current_block, target_parts)
+        }};
+    }
+
     #[tokio::test]
     async fn test_selective_mode_filter_exprs() -> anyhow::Result<()> {
-        use crate::chains::{ChainApi, ChainDef};
-        let target_parts = std::thread::available_parallelism().unwrap().get();
-        maybe_check_rpc_exists_env!();
-        let conf = RpcApiConfig {
-            url: Some(get_rpc_url()),
-            batch_size: Some(100),
-            max_concurrent: Some(10),
-            ..Default::default()
-        };
-        // create eth chain with no partition index
-        let eth_chain = Arc::new(EthChain::new(ChainConf {
-            partition_index: None,
-            data_fetch_conf: Some(EthDynConf { rpc: conf }),
-            ..Default::default()
-        }));
-        let tables = eth_chain.clone().get_tables();
-        let table = tables
-            .iter()
-            .find(|t| t.name() == "blocks")
-            .unwrap()
-            .clone();
-        let current_block = eth_chain.max_blocknum().await?;
+        let (ctx, table, current_block, target_parts) = setup_eth_integration!();
         // do table scan
-        let ctx = Ctx::new();
+
         let provider = ChaindexerTableProvider::try_create(table.clone(), ctx.state())
             .await
             .unwrap();
@@ -1093,6 +1118,28 @@ mod tests {
             selective_plan.partitions[0].as_set().len(),
             100 / target_parts
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_selective_mode_last_n_no_fiters() -> anyhow::Result<()> {
+        let (ctx, table, curblock, _) = setup_eth_integration!();
+        let end_block = 1_000_000;
+        ctx.state().set_end_block(end_block);
+        ctx.state().set_start_block(end_block - 5);
+        let df = ctx.ctx().table(table.table_reference()).await?;
+        let batches = df.collect().await?;
+        let total_rows = batches.iter().map(|b| b.num_rows()).sum::<usize>();
+        assert_eq!(total_rows, 5);
+        ctx.state().set_last_n(5);
+        let df = ctx.ctx().table(table.table_reference()).await?;
+        let batches = df.collect().await?;
+        let first = as_uint64_array(batches[0].column(0)).unwrap().value(0);
+        println!("{}", pretty_format_batches(&batches)?);
+        let total_rows = batches.iter().map(|b| b.num_rows()).sum::<usize>();
+        assert_eq!(first, curblock - 5);
+        // block could possibly have been added in this time
+        assert!(total_rows == 5 || total_rows == 6);
         Ok(())
     }
 }
