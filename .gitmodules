@@ -1,6 +1,9 @@
 [submodule "subgraphs/uniswap/v3-subgraph"]
-	path = data/subgraphs/uniswap/v3-subgraph
+	path = chaindexer_data_scraper/data/subgraphs/uniswap/v3-subgraph
 	url = https://github.com/Uniswap/v3-subgraph.git
 [submodule "subgraphs/uniswap/v2-subgraph"]
-	path = data/subgraphs/uniswap/v2-subgraph
+	path = chaindexer_data_scraper/data/subgraphs/uniswap/v2-subgraph
 	url = https://github.com/Uniswap/v2-subgraph.git
+[submodule "chaindexer_data_scraper/data/trustwallet/assets"]
+	path = chaindexer_data_scraper/data/trustwallet/assets
+	url = https://github.com/trustwallet/assets.git

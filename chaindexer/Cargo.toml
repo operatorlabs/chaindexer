@@ -14,6 +14,7 @@ datafusion = { version = "18.0.0", features = ["scheduler"] }
 tokio = { version = "1.24.2", features = [
   "full", # todo: change features from "full"
 ] }
+chaindexer_data_scraper = { path = "../data_scraper" }
 tokio-util = { version = "0.7.4", features = ["io"] }
 # utils
 futures = "0.3.25"
@@ -67,3 +68,7 @@ test-case = "2.2.2"
 # not currently using this one anywhere yet but seems cool
 static_assertions = "1.1.0"
 dotenv = "0.15.0"
+
+[build-dependencies]
+# build default data into bin
+chaindexer_data_scraper = { path = "../chaindexer_data_scraper" }

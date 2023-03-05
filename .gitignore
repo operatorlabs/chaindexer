@@ -5,8 +5,7 @@
 .env
 _scratch
 # for testing
-testdata/_test*
+chaindexer/testdata/_test*
 .chaindexer
-./testdata
 .history
 Cargo.lock
