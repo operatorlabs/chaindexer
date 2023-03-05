@@ -14,7 +14,7 @@ datafusion = { version = "18.0.0", features = ["scheduler"] }
 tokio = { version = "1.24.2", features = [
   "full", # todo: change features from "full"
 ] }
-chaindexer_data_scraper = { path = "../data_scraper" }
+chaindexer_data_scraper = { path = "../data-scraper" }
 tokio-util = { version = "0.7.4", features = ["io"] }
 # utils
 futures = "0.3.25"
@@ -71,4 +71,4 @@ dotenv = "0.15.0"
 
 [build-dependencies]
 # build default data into bin
-chaindexer_data_scraper = { path = "../chaindexer_data_scraper" }
+chaindexer_data_scraper = { path = "../data-scraper" }

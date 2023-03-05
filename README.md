@@ -11,7 +11,8 @@ Cargo is required to build/install ([rustup](https://rustup.rs/) is an easy way 
 Then from the root of this repo, run
 
 ```sh
-cargo install --path .
+git submodule --init
+cargo install --path chaindexer/
 ```
 
 # Quickstart
