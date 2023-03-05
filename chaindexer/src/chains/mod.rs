@@ -1,8 +1,8 @@
+mod assets;
 mod chain_api;
 mod entity;
 pub mod eth;
 mod polygon;
-
 #[cfg(test)]
 pub mod test;
 #[cfg(test)]
