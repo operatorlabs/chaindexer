@@ -106,41 +106,6 @@ fn load_asset(entry: &DirEntry) -> Result<(String, Asset)> {
     Ok((address.to_string(), asset))
 }
 
-pub fn codegen(chains: Vec<&str>) -> String {
-    let mut buf = "use chaindexer_data_scraper::assets::*;\
-                  \nuse std::collections::HashMap;"
-        .to_string();
-    for chain in chains {
-        let assets = load_chain(chain).unwrap();
-        let mut assets_buf = "".to_string();
-        for (addr, v) in assets.assets {
-            if !v.name.is_ascii() {
-                continue;
-            }
-            let val = format!(
-                "serde_json::from_value(serde_json::json!({})).unwrap()",
-                serde_json::to_string(&v).unwrap()
-            );
-            assets_buf.push_str(&format!(
-                "    assets.insert(\"{addr}\".to_string(), {val} );\n"
-            ));
-        }
-        let info = format!(
-            "let info: ChainInfo = serde_json::from_value(serde_json::json!({})).unwrap()",
-            serde_json::to_string(&assets.info).unwrap()
-        );
-        buf.push_str(&format!(
-            "\npub fn {chain}_assets() -> Chain {{\
-                 \n    {info};\
-                 \n    let mut assets = HashMap::new();\
-                 \n{assets_buf}\
-                 \n    Chain {{ info, assets }}\
-            \n}}",
-        ))
-    }
-    buf
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

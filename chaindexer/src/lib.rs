@@ -3,7 +3,6 @@
 mod cli;
 pub use cli::{entrypoint, CliError};
 pub mod chains;
-mod generated;
 mod partition_index;
 pub mod queryeng;
 pub mod storage;
